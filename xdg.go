@@ -27,6 +27,10 @@ import (
 //	$XDG_DATA_HOME (or $HOME/.local/share when not set)
 //	Directories in $XDG_DATA_DIRS (or /usr/local/share:/usr/share when not set)
 //
+// For runtime files, these are:
+//
+//	$XDG_RUNTIME_DIR (or /tmp when not set; implementation defined)
+//
 // Finally, the directory specified by GoImportPath is searched in all
 // source directories reported by the `go/build` package.
 type Paths struct {
@@ -42,6 +46,8 @@ type Paths struct {
 	// files in your repo. This is used as a last resort to find files.
 	// (And it will only work if your package was installed using the GOPATH
 	// environment.)
+	//
+	// N.B. XDGSuffix is not used here,
 	// i.e., "github.com/BurntSushi/wingo/config"
 	GoImportPath string
 }
@@ -162,6 +168,35 @@ func (ps Paths) DataFile(name string) (string, error) {
 	} else {
 		try = append(try, path.Join("/", "usr", "local", "share", ps.XDGSuffix))
 		try = append(try, path.Join("/", "usr", "share", ps.XDGSuffix))
+	}
+
+	// Add directories from GOPATH. Last resort.
+	for _, dir := range build.Default.SrcDirs() {
+		d := path.Join(dir, ps.GoImportPath)
+		try = append(try, d)
+	}
+
+	return searchPaths(try, name)
+}
+
+// RuntimeFile returns a file path containing the runtime file
+// specified. If one cannot be found, an error will be returned which
+// contains a list of all file paths searched.
+func (ps Paths) RuntimeFile(name string) (string, error) {
+	xdgRuntime := os.Getenv("XDG_RUNTIME_DIR")
+
+	try := make([]string, 0)
+
+	// from override
+	if len(ps.Override) > 0 {
+		try = append(try, ps.Override)
+	}
+
+	// XDG_RUNTIME_DIR
+	if len(xdgRuntime) > 0 {
+		try = append(try, path.Join(xdgRuntime, ps.XDGSuffix))
+	} else {
+		try = append(try, path.Join(os.TempDir(), ps.XDGSuffix))
 	}
 
 	// Add directories from GOPATH. Last resort.
