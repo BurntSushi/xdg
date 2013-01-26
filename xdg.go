@@ -67,7 +67,7 @@ func (ps Paths) MustPanic(fpath string, err error) []byte {
 	return bs
 }
 
-// MustError is like MustPanic, but instead of panicing when something goes 
+// MustError is like MustPanic, but instead of panicing when something goes
 // wrong, it prints the error to stderr and calls os.Exit(1).
 func (ps Paths) MustError(fpath string, err error) []byte {
 	if err != nil {
@@ -217,7 +217,7 @@ func searchPaths(paths []string, suffix string) (string, error) {
 		}
 
 		fpath := path.Join(dir, suffix)
-		if readable(fpath) {
+		if exists(fpath) {
 			return fpath, nil
 		} else {
 			tried = append(tried, fpath)
@@ -226,12 +226,11 @@ func searchPaths(paths []string, suffix string) (string, error) {
 
 	// Show the user where we've looked for config files...
 	triedStr := strings.Join(tried, ", ")
-	return "", fmt.Errorf("Could not find a readable '%s' file. Tried "+
+	return "", fmt.Errorf("Could not find a '%s' file. Tried "+
 		"the following paths: %s", suffix, triedStr)
 }
 
-func readable(p string) bool {
-	_, err := os.Open(p)
-	return err == nil
+func exists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil || os.IsExist(err)
 }
-
